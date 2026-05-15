@@ -65,11 +65,9 @@ if(WIN32)
     target_link_libraries(orbis-agent PRIVATE ws2_32 advapi32 psapi)
     # Embed the custom manifest via linker — disables auto-generated manifest
     if(MSVC)
-        target_link_options(orbis-agent PRIVATE
-            /MANIFEST:EMBED
-            /MANIFESTUAC:NO
-            /MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/orbis-agent.manifest
-        )
+        # The manifest is already embedded via the .rc file (RT_MANIFEST resource).
+        # Disable the linker's auto-manifest to avoid CVT1100 duplicate resource error.
+        target_link_options(orbis-agent PRIVATE /MANIFEST:NO)
     endif()
 elseif(APPLE)
     target_sources(orbis-agent PRIVATE src/platform/MacOSService.cpp)

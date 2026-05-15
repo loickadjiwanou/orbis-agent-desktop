@@ -16,6 +16,9 @@
 
 // Platform includes
 #if defined(PLATFORM_WINDOWS)
+#  ifndef NOMINMAX
+#    define NOMINMAX
+#  endif
 #  include <windows.h>
 #  include <pdh.h>
 #  include <iphlpapi.h>
@@ -128,7 +131,13 @@ std::string HeartbeatService::buildPayload(const std::string& status) const {
     auto now    = std::chrono::system_clock::now();
     auto now_t  = std::chrono::system_clock::to_time_t(now);
     char ts[32] = {};
-    std::strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", std::gmtime(&now_t));
+    struct tm tm_buf{};
+#if defined(PLATFORM_WINDOWS)
+    gmtime_s(&tm_buf, &now_t);
+#else
+    gmtime_r(&now_t, &tm_buf);
+#endif
+    std::strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", &tm_buf);
 
     json j;
     j["device_id"]   = device_id_;
@@ -529,11 +538,22 @@ std::string HeartbeatService::getHostname() {
 std::string HeartbeatService::getPlatform() { return "windows"; }
 
 std::string HeartbeatService::getOsVersion() {
-    OSVERSIONINFOEX info{};
-    info.dwOSVersionInfoSize = sizeof(info);
-    GetVersionEx(reinterpret_cast<OSVERSIONINFO*>(&info));
-    return "Windows " + std::to_string(info.dwMajorVersion) + "." +
-           std::to_string(info.dwMinorVersion);
+    // Use RtlGetVersion via dynamic lookup to avoid deprecated GetVersionEx
+    using RtlGetVersionFn = LONG (WINAPI*)(OSVERSIONINFOW*);
+    HMODULE ntdll = GetModuleHandleA("ntdll.dll");
+    if (ntdll) {
+        auto fn = reinterpret_cast<RtlGetVersionFn>(
+            GetProcAddress(ntdll, "RtlGetVersion"));
+        if (fn) {
+            OSVERSIONINFOEXW info{};
+            info.dwOSVersionInfoSize = sizeof(info);
+            if (fn(reinterpret_cast<OSVERSIONINFOW*>(&info)) == 0) {
+                return "Windows " + std::to_string(info.dwMajorVersion) + "." +
+                       std::to_string(info.dwMinorVersion);
+            }
+        }
+    }
+    return "Windows";
 }
 
 std::string HeartbeatService::getArchitecture() {

@@ -1,4 +1,4 @@
-# orbis-agent — Desktop Agent C++17
+# Orbis-agent — Desktop Agent C++17
 
 Cross-platform system monitoring agent for the Orbis project. It installs as an OS service (systemd / launchd / Windows SCM), connects to the MQTT broker over TLS, and continuously reports metrics, logs, and command results to the Orbis backend.
 

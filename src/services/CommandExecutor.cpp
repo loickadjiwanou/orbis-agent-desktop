@@ -15,6 +15,9 @@
 #include <thread>
 
 #if defined(PLATFORM_WINDOWS)
+#  ifndef NOMINMAX
+#    define NOMINMAX
+#  endif
 #  include <windows.h>
 #else
 #  include <sys/wait.h>
@@ -383,7 +386,13 @@ std::string CommandExecutor::nowISO8601() {
     auto now   = std::chrono::system_clock::now();
     auto now_t = std::chrono::system_clock::to_time_t(now);
     char buf[32] = {};
-    std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", std::gmtime(&now_t));
+    struct tm tm_buf{};
+#if defined(PLATFORM_WINDOWS)
+    gmtime_s(&tm_buf, &now_t);
+#else
+    gmtime_r(&now_t, &tm_buf);
+#endif
+    std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", &tm_buf);
     return buf;
 }
 

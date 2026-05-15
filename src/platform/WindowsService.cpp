@@ -4,6 +4,9 @@
 #include <spdlog/spdlog.h>
 
 #ifdef PLATFORM_WINDOWS
+#ifndef NOMINMAX
+#  define NOMINMAX
+#endif
 #include <windows.h>
 #include <winsvc.h>
 #include <filesystem>
@@ -66,6 +69,13 @@ static VOID WINAPI svcMain(DWORD /*argc*/, LPSTR* /*argv*/) {
     reportStatus(SERVICE_STOPPED);
     CloseHandle(g_stop_event);
 }
+
+// Service dispatch table — used when binary is invoked by the SCM.
+// Keeping this reference ensures svcMain is not removed by the linker.
+static const SERVICE_TABLE_ENTRYA g_dispatch_table[] = {
+    { const_cast<LPSTR>(constants::SERVICE_NAME), svcMain },
+    { nullptr, nullptr }
+};
 
 // ---------------------------------------------------------------------------
 // Windows SCM installer

@@ -36,7 +36,13 @@ protected:
 
             auto now_t = std::chrono::system_clock::to_time_t(msg.time);
             char ts[32] = {};
-            std::strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", std::gmtime(&now_t));
+            struct tm tm_buf{};
+#if defined(PLATFORM_WINDOWS)
+            gmtime_s(&tm_buf, &now_t);
+#else
+            gmtime_r(&now_t, &tm_buf);
+#endif
+            std::strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", &tm_buf);
 
             std::string source = (msg.logger_name.size() == 0)
                 ? "agent"

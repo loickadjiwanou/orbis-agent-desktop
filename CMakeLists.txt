@@ -67,6 +67,7 @@ if(WIN32)
     if(MSVC)
         target_link_options(orbis-agent PRIVATE
             /MANIFEST:EMBED
+            /MANIFESTUAC:NO
             /MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/orbis-agent.manifest
         )
     endif()
@@ -191,8 +192,12 @@ if(UNIX AND NOT APPLE)
 elseif(APPLE)
     # ── DragNDrop (DMG) ────────────────────────────────────────────────────
     set(CPACK_GENERATOR "DragNDrop")
-    set(CPACK_DMG_VOLUME_NAME       "Orbis Agent")
-    set(CPACK_PACKAGE_FILE_NAME     "orbis-agent-${PROJECT_VERSION}-macos")
+    set(CPACK_DMG_VOLUME_NAME "Orbis Agent")
+    if(DEFINED ORBIS_ARCH_LABEL)
+        set(CPACK_PACKAGE_FILE_NAME "orbis-agent-${PROJECT_VERSION}-macos-${ORBIS_ARCH_LABEL}")
+    else()
+        set(CPACK_PACKAGE_FILE_NAME "orbis-agent-${PROJECT_VERSION}-macos")
+    endif()
 
 else()
     # ── NSIS (EXE) ─────────────────────────────────────────────────────────

@@ -26,12 +26,21 @@ jobs:
             artifact_glob: "build/*.deb"
             artifact_name: orbis-agent-linux
 
-          - name: macOS (DMG)
+          - name: macOS Intel (DMG)
             os: macos-13
             triplet: x64-osx
+            arch_label: intel
             cpack_gen: DragNDrop
             artifact_glob: "build/*.dmg"
-            artifact_name: orbis-agent-macos
+            artifact_name: orbis-agent-macos-intel
+
+          - name: macOS Apple Silicon (DMG)
+            os: macos-14
+            triplet: arm64-osx
+            arch_label: arm64
+            cpack_gen: DragNDrop
+            artifact_glob: "build/*.dmg"
+            artifact_name: orbis-agent-macos-arm64
 
           - name: Windows (EXE)
             os: windows-2022
@@ -102,6 +111,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_TOOLCHAIN_FILE="$GITHUB_WORKSPACE/vcpkg/scripts/buildsystems/vcpkg.cmake" \
             -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} \
+            ${{ matrix.arch_label && format('-DORBIS_ARCH_LABEL={0}', matrix.arch_label) || '' }} \
             -G Ninja
 
       # -----------------------------------------------------------------------

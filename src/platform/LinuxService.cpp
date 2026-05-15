@@ -106,9 +106,9 @@ public:
     bool uninstall() override {
         stop();
         std::string disable_cmd = std::string("systemctl disable ") + constants::SERVICE_NAME;
-        system(disable_cmd.c_str());
+        (void)system(disable_cmd.c_str());
         fs::remove(constants::SYSTEMD_UNIT_PATH);
-        system("systemctl daemon-reload");
+        (void)system("systemctl daemon-reload");
         spdlog::info("LinuxService: {} uninstalled", constants::SERVICE_NAME);
         return true;
     }

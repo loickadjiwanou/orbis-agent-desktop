@@ -148,6 +148,7 @@ else()
     # ── Windows ────────────────────────────────────────────────────────────
     install(TARGETS orbis-agent DESTINATION ".")
     install(TARGETS cpu_ram disk docker_stats syslog_collector
+            LIBRARY DESTINATION plugins
             RUNTIME DESTINATION plugins)
     install(FILES   packaging/windows/config.toml.default
             DESTINATION "."

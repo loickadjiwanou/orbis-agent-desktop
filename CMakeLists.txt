@@ -222,10 +222,13 @@ else()
         COPYONLY)
 
     # CMake normalises paths with forward slashes — NSIS !include accepts them.
+    # No quotes around the path: CPack does not escape inner " when serialising
+    # to CPackConfig.cmake, which breaks the !include into zero arguments.
+    # GitHub Actions runner paths never contain spaces so quoting is not needed.
     set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS
-        "!include \"${CMAKE_CURRENT_BINARY_DIR}/nsis_install_commands.nsi\"")
+        "!include ${CMAKE_CURRENT_BINARY_DIR}/nsis_install_commands.nsi")
     set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS
-        "!include \"${CMAKE_CURRENT_BINARY_DIR}/nsis_uninstall_commands.nsi\"")
+        "!include ${CMAKE_CURRENT_BINARY_DIR}/nsis_uninstall_commands.nsi")
 
     set(CPACK_PACKAGE_FILE_NAME "orbis-agent-${PROJECT_VERSION}-windows-x64-setup")
 endif()

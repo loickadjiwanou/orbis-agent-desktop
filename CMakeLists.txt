@@ -11,6 +11,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ---------------------------------------------------------------------------
+# MSVC runtime library — must match the vcpkg triplet's CRT linkage.
+# x64-windows-static builds all deps with /MT; mismatching causes LNK2038.
+# ---------------------------------------------------------------------------
+if(MSVC AND DEFINED VCPKG_TARGET_TRIPLET AND VCPKG_TARGET_TRIPLET MATCHES "-static")
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
+# ---------------------------------------------------------------------------
 # vcpkg toolchain (auto-detect VCPKG_ROOT env var)
 # ---------------------------------------------------------------------------
 if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)

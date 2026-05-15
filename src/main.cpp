@@ -88,10 +88,12 @@ static std::atomic<bool> g_shutdown{false};
 static std::mutex        g_shutdown_mutex;
 static std::condition_variable g_shutdown_cv;
 
+#if !defined(PLATFORM_WINDOWS)
 static void handleSignal(int /*sig*/) {
     g_shutdown = true;
     g_shutdown_cv.notify_all();
 }
+#endif
 
 // ---------------------------------------------------------------------------
 // Uninstall protection helpers

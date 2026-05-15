@@ -19,6 +19,9 @@
 #  ifndef NOMINMAX
 #    define NOMINMAX
 #  endif
+// winsock2.h must come before windows.h, and before iphlpapi.h which depends on it
+#  include <winsock2.h>
+#  include <ws2tcpip.h>
 #  include <windows.h>
 #  include <pdh.h>
 #  include <iphlpapi.h>

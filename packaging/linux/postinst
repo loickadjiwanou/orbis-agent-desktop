@@ -1,0 +1,43 @@
+#!/bin/sh
+set -e
+
+CONFIG_DIR="/etc/orbis-agent"
+DATA_DIR="/var/lib/orbis-agent"
+LOG_FILE="/var/log/orbis-agent.log"
+
+# Create required directories
+mkdir -p "$CONFIG_DIR" "$DATA_DIR"
+chmod 750 "$CONFIG_DIR" "$DATA_DIR"
+
+# Ensure log file exists and is writable
+touch "$LOG_FILE"
+chmod 640 "$LOG_FILE"
+
+# Protect the uninstall key file if it exists
+if [ -f "$CONFIG_DIR/.uninstall_key" ]; then
+    chmod 600 "$CONFIG_DIR/.uninstall_key"
+    chown root:root "$CONFIG_DIR/.uninstall_key"
+fi
+
+# Make the binary non-writable by non-root (tamper protection)
+chmod 755 /usr/bin/orbis-agent
+chown root:root /usr/bin/orbis-agent
+
+case "$1" in
+    configure)
+        # Reload systemd and enable+start the service
+        if command -v systemctl > /dev/null 2>&1; then
+            systemctl daemon-reload
+            systemctl enable orbis-agent.service
+            systemctl start orbis-agent.service || true
+        fi
+        ;;
+esac
+
+echo ""
+echo "====================================================================="
+echo "  Orbis Agent installed successfully."
+echo "  Edit /etc/orbis-agent/config.toml to set your server address,"
+echo "  then restart: systemctl restart orbis-agent"
+echo "====================================================================="
+echo ""

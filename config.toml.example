@@ -1,0 +1,42 @@
+# Orbis Agent — Configuration
+# Copy to /etc/orbis-agent/config.toml (Linux/macOS)
+#           C:\ProgramData\Orbis\config.toml (Windows)
+
+[agent]
+version = "1.0.0"
+device_id = ""              # Auto-generated UUID v4 on first launch — do not edit
+token = ""                  # Received from backend after onboarding — do not edit
+# Linux/macOS:
+log_file = "/var/log/orbis-agent.log"
+# Windows:
+# log_file = "C:\\ProgramData\\Orbis\\agent.log"
+
+[mqtt]
+broker_host = "localhost"
+broker_port = 8883
+use_tls = true
+ca_cert_path = ""           # Path to CA certificate for TLS verification (empty = skip verify)
+# The two fields below are managed automatically — do not set manually
+username = ""               # Set to device_id after onboarding
+password = ""               # Set to token after onboarding
+register_secret = "orbis_register_secret"  # Shared secret used during onboarding only
+reconnect_delay_min_sec = 1
+reconnect_delay_max_sec = 60
+keepalive_sec = 60
+
+[logs]
+interval_sec = 60
+levels = ["INFO", "WARNING", "ERROR", "CRITICAL"]
+sources = []                # Empty = collect from all sources
+
+[heartbeat]
+interval_sec = 30
+
+[plugins]
+enabled = true
+plugins_dir = "./plugins"   # Relative to binary or absolute path
+
+[network_scanner]
+enabled = false
+scan_interval_sec = 300
+port_range = "22,80,443,8080,8883"

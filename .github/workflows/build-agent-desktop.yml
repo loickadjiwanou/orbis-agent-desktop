@@ -1,0 +1,180 @@
+name: Build Agent Desktop
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  # vcpkg binary caching via GitHub Actions cache API
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux (DEB)
+            os: ubuntu-22.04
+            triplet: x64-linux
+            cpack_gen: DEB
+            artifact_glob: "build/*.deb"
+            artifact_name: orbis-agent-linux
+
+          - name: macOS (DMG)
+            os: macos-13
+            triplet: x64-osx
+            cpack_gen: DragNDrop
+            artifact_glob: "build/*.dmg"
+            artifact_name: orbis-agent-macos
+
+          - name: Windows (EXE)
+            os: windows-2022
+            triplet: x64-windows-static
+            cpack_gen: NSIS
+            artifact_glob: "build/*.exe"
+            artifact_name: orbis-agent-windows
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Checkout
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # -----------------------------------------------------------------------
+      # 2. Export GitHub Actions cache variables for vcpkg binary caching
+      # -----------------------------------------------------------------------
+      - name: Export vcpkg cache env vars
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      # -----------------------------------------------------------------------
+      # 3. System dependencies
+      # -----------------------------------------------------------------------
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake ninja-build git curl zip unzip tar pkg-config \
+            libssl-dev libcurl4-openssl-dev libsqlite3-dev \
+            nsis dpkg-dev
+
+      - name: Install system dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install cmake ninja pkg-config
+
+      # Windows: cmake, ninja, NSIS are pre-installed on windows-2022 runner
+
+      # -----------------------------------------------------------------------
+      # 4. Setup vcpkg
+      # -----------------------------------------------------------------------
+      - name: Setup vcpkg
+        shell: bash
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git "$GITHUB_WORKSPACE/vcpkg" --depth=1
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            "$GITHUB_WORKSPACE/vcpkg/bootstrap-vcpkg.bat" -disableMetrics
+          else
+            "$GITHUB_WORKSPACE/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+          fi
+
+      # -----------------------------------------------------------------------
+      # 5. Configure (Linux / macOS)
+      # -----------------------------------------------------------------------
+      - name: Configure (Linux / macOS)
+        if: runner.os != 'Windows'
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$GITHUB_WORKSPACE/vcpkg/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} \
+            -G Ninja
+
+      # -----------------------------------------------------------------------
+      # 5. Configure (Windows)
+      # -----------------------------------------------------------------------
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake -S . -B build `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_TOOLCHAIN_FILE="$env:GITHUB_WORKSPACE/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} `
+            -G "Visual Studio 17 2022" -A x64
+
+      # -----------------------------------------------------------------------
+      # 6. Build
+      # -----------------------------------------------------------------------
+      - name: Build (Linux / macOS)
+        if: runner.os != 'Windows'
+        run: |
+          cmake --build build --config Release --parallel $(nproc 2>/dev/null || sysctl -n hw.logicalcpu)
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --parallel $env:NUMBER_OF_PROCESSORS
+
+      # -----------------------------------------------------------------------
+      # 7. Package with CPack
+      # -----------------------------------------------------------------------
+      - name: Package (Linux / macOS)
+        if: runner.os != 'Windows'
+        working-directory: build
+        run: cpack -G ${{ matrix.cpack_gen }} -C Release
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        working-directory: build
+        shell: pwsh
+        run: cpack -G ${{ matrix.cpack_gen }} -C Release
+
+      # -----------------------------------------------------------------------
+      # 8. Upload artifact
+      # -----------------------------------------------------------------------
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_glob }}
+          retention-days: 30
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Release: attach artifacts to GitHub Release when a tag is pushed
+  # ---------------------------------------------------------------------------
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+
+      - name: Create release and upload packages
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**/*
+          generate_release_notes: true

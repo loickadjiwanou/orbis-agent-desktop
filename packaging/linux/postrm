@@ -1,0 +1,19 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    purge)
+        # Remove all data on dpkg --purge
+        rm -rf /etc/orbis-agent
+        rm -rf /var/lib/orbis-agent
+        rm -f  /var/log/orbis-agent.log
+        if command -v systemctl > /dev/null 2>&1; then
+            systemctl daemon-reload || true
+        fi
+        ;;
+    remove)
+        if command -v systemctl > /dev/null 2>&1; then
+            systemctl daemon-reload || true
+        fi
+        ;;
+esac

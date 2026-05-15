@@ -1,0 +1,43 @@
+#!/bin/sh
+set -e
+
+CONFIG_DIR="/etc/orbis-agent"
+KEY_FILE="$CONFIG_DIR/.uninstall_key"
+
+# If an uninstall key is set, require the correct code
+if [ -f "$KEY_FILE" ]; then
+    # Try --uninstall-code from environment (for scripted/silent uninstall)
+    CODE="${ORBIS_UNINSTALL_CODE:-}"
+
+    if [ -z "$CODE" ] && [ -t 0 ]; then
+        # Interactive terminal: prompt the user
+        printf "Orbis Agent uninstall protection\n"
+        printf "Enter uninstall code: "
+        stty -echo
+        read -r CODE
+        stty echo
+        printf "\n"
+    fi
+
+    if [ -z "$CODE" ]; then
+        echo "Error: uninstall code required. Set ORBIS_UNINSTALL_CODE or run interactively." >&2
+        exit 1
+    fi
+
+    # Verify code via the agent binary
+    if /usr/bin/orbis-agent --verify-uninstall-code "$CODE" 2>/dev/null; then
+        echo "Uninstall code accepted."
+    else
+        echo "Error: invalid uninstall code. Uninstall aborted." >&2
+        exit 1
+    fi
+fi
+
+case "$1" in
+    remove|upgrade|deconfigure)
+        if command -v systemctl > /dev/null 2>&1; then
+            systemctl stop  orbis-agent.service 2>/dev/null || true
+            systemctl disable orbis-agent.service 2>/dev/null || true
+        fi
+        ;;
+esac

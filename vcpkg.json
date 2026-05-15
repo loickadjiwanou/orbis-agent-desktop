@@ -1,0 +1,14 @@
+{
+  "name": "orbis-agent",
+  "version": "1.0.0",
+  "description": "Orbis desktop monitoring agent — C++17, cross-platform",
+  "dependencies": [
+    "paho-mqtt",
+    "nlohmann-json",
+    "spdlog",
+    "sqlite3",
+    "openssl",
+    "curl",
+    "toml11"
+  ]
+}

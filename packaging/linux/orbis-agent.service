@@ -1,0 +1,24 @@
+[Unit]
+Description=Orbis remote monitoring and management agent
+Documentation=https://github.com/orbis/orbis
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/orbis-agent --config /etc/orbis-agent/config.toml
+Restart=always
+RestartSec=5
+StartLimitBurst=0
+User=root
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=orbis-agent
+
+# Hardening
+ProtectSystem=false
+PrivateTmp=false
+
+[Install]
+WantedBy=multi-user.target

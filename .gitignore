@@ -1,0 +1,46 @@
+# ── Build outputs ─────────────────────────────────────────────────────────────
+build/
+build-*/
+out/
+cmake-build-*/
+
+# ── vcpkg dependency cache (large, fully reproducible via vcpkg.json) ──────────
+vcpkg_installed/
+
+# ── Compiled objects / libraries ──────────────────────────────────────────────
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.lib
+*.exp
+
+# ── CMake generated files ─────────────────────────────────────────────────────
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+install_manifest.txt
+
+# ── Config files with real credentials ────────────────────────────────────────
+# Keep config.toml.example (template), ignore real configs with secrets
+config.toml
+config.test.toml
+*.local.toml
+
+# ── Runtime artifacts ─────────────────────────────────────────────────────────
+*.db
+*.db-wal
+*.db-shm
+*.log
+
+# ── IDE / language servers ────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+.cache/          # clangd index cache (machine-specific, regenerated automatically)

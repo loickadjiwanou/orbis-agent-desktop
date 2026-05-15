@@ -156,6 +156,25 @@ jobs:
         run: cpack -G ${{ matrix.cpack_gen }} -C Release
 
       # -----------------------------------------------------------------------
+      # 7b. Print NSIS error log on failure (Windows only)
+      # -----------------------------------------------------------------------
+      - name: Show NSIS error log on failure
+        if: failure() && runner.os == 'Windows'
+        shell: pwsh
+        working-directory: build
+        run: |
+          $log = "_CPack_Packages/win64/NSIS/NSISOutput.log"
+          if (Test-Path $log) {
+            Write-Host "=== NSISOutput.log ===" -ForegroundColor Yellow
+            Get-Content $log
+          }
+          $nsi = "_CPack_Packages/win64/NSIS/project.nsi"
+          if (Test-Path $nsi) {
+            Write-Host "=== project.nsi ===" -ForegroundColor Yellow
+            Get-Content $nsi
+          }
+
+      # -----------------------------------------------------------------------
       # 8. Upload artifact
       # -----------------------------------------------------------------------
       - name: Upload package artifact

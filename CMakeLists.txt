@@ -209,54 +209,23 @@ else()
     # Request UAC elevation for the installer itself
     set(CPACK_NSIS_DEFINES "RequestExecutionLevel admin")
 
-    # Post-install: register the Windows service automatically
-    # Note: backslashes are doubled so they survive CMake's CPackConfig.cmake serialization.
-    set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS [[
-      ; Install and start the Orbis service silently (binary already has requireAdministrator)
-      DetailPrint "Installing Orbis Agent service..."
-      ExecWait '"$INSTDIR\\orbis-agent.exe" --install --server "YOUR_SERVER_HOST" --config "$INSTDIR\\config.toml"' $0
-      IntCmp $0 0 install_ok
-        DetailPrint "Service install returned error $0 (may already be installed)"
-      install_ok:
-    ]])
+    # Copy NSIS extra-command scripts to the build directory at configure time.
+    # Using external .nsi files avoids CMake string-escaping issues when CPack
+    # serialises multi-line NSIS code into CPackConfig.cmake.
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/nsis_install_commands.nsi"
+        "${CMAKE_CURRENT_BINARY_DIR}/nsis_install_commands.nsi"
+        COPYONLY)
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/nsis_uninstall_commands.nsi"
+        "${CMAKE_CURRENT_BINARY_DIR}/nsis_uninstall_commands.nsi"
+        COPYONLY)
 
-    # Pre-uninstall: prompt for the protection code, verify via binary
-    set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS [[
-      ; Stop service first
-      DetailPrint "Stopping Orbis Agent service..."
-      ExecWait 'sc stop orbis-agent'
-
-      ; Write a small VBScript to collect the uninstall code interactively
-      GetTempFileName $R8
-      FileOpen $R9 "$R8.vbs" w
-      FileWrite $R9 "Dim c$\\r$\\n"
-      FileWrite $R9 "c = InputBox(""Enter Orbis uninstall code:"", ""Orbis Agent"", """")$\\r$\\n"
-      FileWrite $R9 "WScript.Echo c$\\r$\\n"
-      FileClose $R9
-
-      nsExec::ExecToStack 'wscript //NoLogo "$R8.vbs"'
-      Pop $0   ; exit code
-      Pop $R0  ; code entered by the user
-      Delete "$R8.vbs"
-      Delete "$R8"
-
-      ; Trim trailing newline
-      StrCpy $R0 $R0 -2
-
-      StrCmp $R0 "" 0 +3
-        MessageBox MB_ICONEXCLAMATION "No code entered — uninstall cancelled."
-        Abort
-
-      ; Verify via binary
-      ExecWait '"$INSTDIR\\orbis-agent.exe" --verify-uninstall-code "$R0"' $1
-      IntCmp $1 0 code_ok
-        MessageBox MB_ICONEXCLAMATION "Invalid uninstall code. Uninstall aborted."
-        Abort
-      code_ok:
-
-      ; Code accepted — unregister service
-      ExecWait '"$INSTDIR\\orbis-agent.exe" --uninstall --uninstall-code "$R0"'
-    ]])
+    # CMake normalises paths with forward slashes — NSIS !include accepts them.
+    set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS
+        "!include \"${CMAKE_CURRENT_BINARY_DIR}/nsis_install_commands.nsi\"")
+    set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS
+        "!include \"${CMAKE_CURRENT_BINARY_DIR}/nsis_uninstall_commands.nsi\"")
 
     set(CPACK_PACKAGE_FILE_NAME "orbis-agent-${PROJECT_VERSION}-windows-x64-setup")
 endif()

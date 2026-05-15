@@ -169,16 +169,18 @@ jobs:
 
           $log = "build/_CPack_Packages/win64/NSIS/NSISOutput.log"
           if (Test-Path $log) {
-            Write-Host "=== NSISOutput.log ===" -ForegroundColor Yellow
-            Get-Content $log
+            $lines = Get-Content $log
+            Write-Host "=== NSISOutput.log (LAST 60 lines — where the error lives) ===" -ForegroundColor Yellow
+            $lines | Select-Object -Last 60
+            Write-Host "--- Total lines in log: $($lines.Count) ---"
           } else {
             Write-Host "NSISOutput.log not found at expected path"
           }
 
           $nsi = "build/_CPack_Packages/win64/NSIS/project.nsi"
           if (Test-Path $nsi) {
-            Write-Host "=== project.nsi (last 80 lines) ===" -ForegroundColor Yellow
-            Get-Content $nsi | Select-Object -Last 80
+            Write-Host "=== project.nsi (last 100 lines) ===" -ForegroundColor Yellow
+            Get-Content $nsi | Select-Object -Last 100
           } else {
             Write-Host "project.nsi not found"
           }
@@ -186,8 +188,17 @@ jobs:
           $cfg = "build/CPackConfig.cmake"
           if (Test-Path $cfg) {
             Write-Host "=== CPackConfig.cmake (NSIS section) ===" -ForegroundColor Yellow
-            Get-Content $cfg | Select-String -Pattern "NSIS|INSTALL_COMMANDS|UNINSTALL" -Context 0,2
+            Get-Content $cfg | Select-String -Pattern "NSIS|INSTALL_COMMANDS|UNINSTALL" -Context 0,3
           }
+
+          # Also show the included .nsi files from the build dir
+          Write-Host "=== nsis_install_commands.nsi ===" -ForegroundColor Yellow
+          $f1 = "build/nsis_install_commands.nsi"
+          if (Test-Path $f1) { Get-Content $f1 } else { Write-Host "NOT FOUND: $f1" }
+
+          Write-Host "=== nsis_uninstall_commands.nsi ===" -ForegroundColor Yellow
+          $f2 = "build/nsis_uninstall_commands.nsi"
+          if (Test-Path $f2) { Get-Content $f2 } else { Write-Host "NOT FOUND: $f2" }
 
       # -----------------------------------------------------------------------
       # 8. Upload artifact

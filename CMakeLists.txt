@@ -210,10 +210,11 @@ else()
     set(CPACK_NSIS_DEFINES "RequestExecutionLevel admin")
 
     # Post-install: register the Windows service automatically
+    # Note: backslashes are doubled so they survive CMake's CPackConfig.cmake serialization.
     set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS [[
       ; Install and start the Orbis service silently (binary already has requireAdministrator)
       DetailPrint "Installing Orbis Agent service..."
-      ExecWait '"$INSTDIR\orbis-agent.exe" --install --server "YOUR_SERVER_HOST" --config "$INSTDIR\config.toml"' $0
+      ExecWait '"$INSTDIR\\orbis-agent.exe" --install --server "YOUR_SERVER_HOST" --config "$INSTDIR\\config.toml"' $0
       IntCmp $0 0 install_ok
         DetailPrint "Service install returned error $0 (may already be installed)"
       install_ok:
@@ -228,9 +229,9 @@ else()
       ; Write a small VBScript to collect the uninstall code interactively
       GetTempFileName $R8
       FileOpen $R9 "$R8.vbs" w
-      FileWrite $R9 "Dim c$\r$\n"
-      FileWrite $R9 "c = InputBox(""Enter Orbis uninstall code:"", ""Orbis Agent"", """")$\r$\n"
-      FileWrite $R9 "WScript.Echo c$\r$\n"
+      FileWrite $R9 "Dim c$\\r$\\n"
+      FileWrite $R9 "c = InputBox(""Enter Orbis uninstall code:"", ""Orbis Agent"", """")$\\r$\\n"
+      FileWrite $R9 "WScript.Echo c$\\r$\\n"
       FileClose $R9
 
       nsExec::ExecToStack 'wscript //NoLogo "$R8.vbs"'
@@ -247,14 +248,14 @@ else()
         Abort
 
       ; Verify via binary
-      ExecWait '"$INSTDIR\orbis-agent.exe" --verify-uninstall-code "$R0"' $1
+      ExecWait '"$INSTDIR\\orbis-agent.exe" --verify-uninstall-code "$R0"' $1
       IntCmp $1 0 code_ok
         MessageBox MB_ICONEXCLAMATION "Invalid uninstall code. Uninstall aborted."
         Abort
       code_ok:
 
       ; Code accepted — unregister service
-      ExecWait '"$INSTDIR\orbis-agent.exe" --uninstall --uninstall-code "$R0"'
+      ExecWait '"$INSTDIR\\orbis-agent.exe" --uninstall --uninstall-code "$R0"'
     ]])
 
     set(CPACK_PACKAGE_FILE_NAME "orbis-agent-${PROJECT_VERSION}-windows-x64-setup")

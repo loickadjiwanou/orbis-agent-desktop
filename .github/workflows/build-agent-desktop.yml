@@ -161,17 +161,32 @@ jobs:
       - name: Show NSIS error log on failure
         if: failure() && runner.os == 'Windows'
         shell: pwsh
-        working-directory: build
         run: |
-          $log = "_CPack_Packages/win64/NSIS/NSISOutput.log"
+          Write-Host "=== Searching for NSIS logs ===" -ForegroundColor Cyan
+          Get-ChildItem -Path build -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match "NSISOutput|project\.nsi|CPackConfig" } |
+            ForEach-Object { Write-Host "Found: $($_.FullName)" }
+
+          $log = "build/_CPack_Packages/win64/NSIS/NSISOutput.log"
           if (Test-Path $log) {
             Write-Host "=== NSISOutput.log ===" -ForegroundColor Yellow
             Get-Content $log
+          } else {
+            Write-Host "NSISOutput.log not found at expected path"
           }
-          $nsi = "_CPack_Packages/win64/NSIS/project.nsi"
+
+          $nsi = "build/_CPack_Packages/win64/NSIS/project.nsi"
           if (Test-Path $nsi) {
-            Write-Host "=== project.nsi ===" -ForegroundColor Yellow
-            Get-Content $nsi
+            Write-Host "=== project.nsi (last 80 lines) ===" -ForegroundColor Yellow
+            Get-Content $nsi | Select-Object -Last 80
+          } else {
+            Write-Host "project.nsi not found"
+          }
+
+          $cfg = "build/CPackConfig.cmake"
+          if (Test-Path $cfg) {
+            Write-Host "=== CPackConfig.cmake (NSIS section) ===" -ForegroundColor Yellow
+            Get-Content $cfg | Select-String -Pattern "NSIS|INSTALL_COMMANDS|UNINSTALL" -Context 0,2
           }
 
       # -----------------------------------------------------------------------

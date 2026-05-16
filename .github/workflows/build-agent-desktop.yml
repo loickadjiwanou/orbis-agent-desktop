@@ -156,49 +156,70 @@ jobs:
         run: cpack -G ${{ matrix.cpack_gen }} -C Release
 
       # -----------------------------------------------------------------------
-      # 7b. Print NSIS error log on failure (Windows only)
+      # 7b. NSIS diagnostics on failure — most critical info printed FIRST
+      #     so GitHub Actions UI truncation doesn't hide the actual error.
       # -----------------------------------------------------------------------
       - name: Show NSIS error log on failure
         if: failure() && runner.os == 'Windows'
         shell: pwsh
         run: |
-          Write-Host "=== Searching for NSIS logs ===" -ForegroundColor Cyan
-          Get-ChildItem -Path build -Recurse -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -match "NSISOutput|project\.nsi|CPackConfig" } |
-            ForEach-Object { Write-Host "Found: $($_.FullName)" }
-
           $log = "build/_CPack_Packages/win64/NSIS/NSISOutput.log"
+
+          # ── 1. Error lines only (the real error, shown first) ──────────────
+          Write-Host "=== NSISOutput.log ERROR LINES ===" -ForegroundColor Red
           if (Test-Path $log) {
-            $lines = Get-Content $log
-            Write-Host "=== NSISOutput.log (LAST 60 lines — where the error lives) ===" -ForegroundColor Yellow
-            $lines | Select-Object -Last 60
-            Write-Host "--- Total lines in log: $($lines.Count) ---"
+            Get-Content $log | Select-String -Pattern "(?i)error|!include|no such|can.t open|invalid" |
+              Select-Object -Last 30 | ForEach-Object { Write-Host $_ }
           } else {
-            Write-Host "NSISOutput.log not found at expected path"
+            Write-Host "NSISOutput.log not found"
           }
 
-          $nsi = "build/_CPack_Packages/win64/NSIS/project.nsi"
-          if (Test-Path $nsi) {
-            Write-Host "=== project.nsi (last 100 lines) ===" -ForegroundColor Yellow
-            Get-Content $nsi | Select-Object -Last 100
-          } else {
-            Write-Host "project.nsi not found"
+          # ── 2. Absolute last 15 lines (error + surrounding context) ────────
+          Write-Host "=== NSISOutput.log LAST 15 LINES ===" -ForegroundColor Yellow
+          if (Test-Path $log) {
+            Get-Content $log | Select-Object -Last 15
           }
 
+          # ── 3. CPackConfig — what !include path was actually written ────────
+          Write-Host "=== CPackConfig.cmake NSIS_EXTRA_*_COMMANDS ===" -ForegroundColor Cyan
           $cfg = "build/CPackConfig.cmake"
           if (Test-Path $cfg) {
-            Write-Host "=== CPackConfig.cmake (NSIS section) ===" -ForegroundColor Yellow
-            Get-Content $cfg | Select-String -Pattern "NSIS|INSTALL_COMMANDS|UNINSTALL" -Context 0,3
+            Get-Content $cfg | Select-String -Pattern "EXTRA_(UN)?INSTALL" -Context 0,2
           }
 
-          # Also show the included .nsi files from the build dir
-          Write-Host "=== nsis_install_commands.nsi ===" -ForegroundColor Yellow
-          $f1 = "build/nsis_install_commands.nsi"
-          if (Test-Path $f1) { Get-Content $f1 } else { Write-Host "NOT FOUND: $f1" }
+          # ── 4. Confirm the included .nsi files exist in the build dir ───────
+          Write-Host "=== Included .nsi files in build/ ===" -ForegroundColor Cyan
+          foreach ($f in @("build/nsis_install_commands.nsi","build/nsis_uninstall_commands.nsi")) {
+            if (Test-Path $f) {
+              Write-Host "FOUND $f — contents:"; Get-Content $f
+            } else {
+              Write-Host "MISSING: $f"
+            }
+          }
 
-          Write-Host "=== nsis_uninstall_commands.nsi ===" -ForegroundColor Yellow
-          $f2 = "build/nsis_uninstall_commands.nsi"
-          if (Test-Path $f2) { Get-Content $f2 } else { Write-Host "NOT FOUND: $f2" }
+          # ── 5. project.nsi tail (last 40 lines, contains the !include calls) ─
+          $nsi = "build/_CPack_Packages/win64/NSIS/project.nsi"
+          if (Test-Path $nsi) {
+            Write-Host "=== project.nsi LAST 40 LINES ===" -ForegroundColor Yellow
+            Get-Content $nsi | Select-Object -Last 40
+          }
+
+      # -----------------------------------------------------------------------
+      # 7c. Upload NSIS logs as artifact for full offline inspection
+      # -----------------------------------------------------------------------
+      - name: Upload NSIS logs on failure
+        if: failure() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nsis-logs-windows
+          path: |
+            build/_CPack_Packages/win64/NSIS/NSISOutput.log
+            build/_CPack_Packages/win64/NSIS/project.nsi
+            build/CPackConfig.cmake
+            build/nsis_install_commands.nsi
+            build/nsis_uninstall_commands.nsi
+          if-no-files-found: warn
+          retention-days: 7
 
       # -----------------------------------------------------------------------
       # 8. Upload artifact
